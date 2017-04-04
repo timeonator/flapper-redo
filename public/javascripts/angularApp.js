@@ -2,22 +2,8 @@ var app = angular.module('flapperNews', ['ui.router']);
 //
 // Posts service
 //
-app.factory('posts', [function(){
-  // service body
-	var o = {
-		posts: [
-			{
-				title: 'post 1', link: '', upvotes: 5, comments: [
-					{ author: 'Joe', body: 'Cool post!', upvotes: 0 },
-					{ author: 'Bob', body: 'Great idea but everything is wrong!', upvotes: 0 }]},
-			 { title: 'post 2', link: '', upvotes: 2, comments: [] },
-			{ title: 'post 3', link: '', upvotes: 15, comments: [] },
-			{ title: 'post 4', link: '', upvotes: 9, comments: [] },
-			{ title: 'post 5', link: '', upvotes: 4, comments: [] }
-		]
-	};
-	return o;
-}]);
+
+
 app.config([
 '$stateProvider',
 '$urlRouterProvider',
@@ -27,7 +13,12 @@ function($stateProvider, $urlRouterProvider) {
 		.state('home', {
 			url: '/home',
 			templateUrl: '/home.html',
-			controller: 'MainCtrl'
+			controller: 'MainCtrl',
+			resolve: {
+    		postPromise: ['posts', function(posts){
+      	return posts.getAll();
+    	}]
+  }
 		})
 		.state('posts', {
 			url: '/posts/{id}',
@@ -36,6 +27,31 @@ function($stateProvider, $urlRouterProvider) {
 		});	
 
   $urlRouterProvider.otherwise('home');
+}]);
+
+app.factory('posts', ['$http', function($http){
+  // service body
+	var o = {
+		posts: []		
+	};
+	o.getAll = function() {
+    return $http.get('/posts').success(function(data){
+      angular.copy(data, o.posts);
+    });
+  };
+	o.create = function(post) {
+  	return $http.post('/posts', post).success(function(data){
+    	o.posts.push(data);
+  	});
+	};
+	o.upvote = function(post) {
+ 	 return $http.put('/posts/' + post._id + '/upvote')
+    .success(function(data){
+      post.upvotes += 1;
+    });
+	};
+	
+	return o;
 }]);
 
 
@@ -57,6 +73,7 @@ $scope.addComment = function(){
   });
   $scope.body = '';
 };
+
 }]);
 
 //
@@ -65,16 +82,18 @@ $scope.addComment = function(){
 app.controller('MainCtrl', [ '$scope', 'posts', function($scope, posts) {
 	$scope.test = 'Hello world!';
 	$scope.posts = posts.posts;
-  $scope.addPost = function() {
-	if(!$scope.title || $scope.title === '') { return; }
-	$scope.posts.push({
-		title: $scope.title,
-	    link: $scope.link,
-		upvotes:0});
-	$scope.title = '';
-	$scope.link = '';
+
+ $scope.addPost = function(){
+  if(!$scope.title || $scope.title === '') { return; }
+  posts.create({
+    title: $scope.title,
+    link: $scope.link,
+  });
+  $scope.title = '';
+  $scope.link = '';
 };
+
 $scope.incrementUpvotes = function(post) {
-  post.upvotes += 1;
+  posts.upvote(post);
 };
 }]);
