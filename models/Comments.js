@@ -9,6 +9,7 @@ var CommentSchema = new mongoose.Schema({
 });
 
 CommentSchema.methods.upvote = function(cb) {
+  console.log("What the fuck")
   this.upvotes += 1;
   this.save(cb);
 };
